@@ -1,0 +1,326 @@
+#include <reg52.h>
+#include <string.h>
+#define lcdport P2
+#define msec 50
+sbit rs = P3^0;  //Register select (RS) pin
+sbit rw = P3^1;  //Read write(RW) pin
+sbit en = P3^6;  //Enable(EN) pin
+sbit ini_pin = P1^0; // Start voting pin
+sbit stop_pin = P1^4; // Stop voting pin
+sbit candidate_1=P1^1;  //Candidate1
+sbit candidate_2=P1^2;  //Candidate2
+sbit candidate_3=P1^3; //Candidate3
+int max = 0;
+int carry = 0;
+int arr[3];
+unsigned int vote1,vote2,vote3, vote_1,vote_2,vote_3;
+void delay(int delay_time)  // Time delay function
+{
+int j,k;
+for(j=0;j<=delay_time;j++)
+  for(k=0;k<=1000;k++);
+}
+void daten()
+{
+    rs=1;
+    en=1;
+    delay(1);
+    en=0;
+}
+void lcd_data(unsigned char ch)
+{
+    lcdport = ch;
+    daten();
+}
+void cmden(void)
+{
+    rs=0;
+    en=1;
+    delay(1);
+    en=0;
+}
+void lcd_cmd(unsigned char ch)
+{
+    lcdport = ch;
+    cmden();
+}
+void lcd_data_str(char *str)
+{
+    while(*str)
+    {
+        lcd_data(*str);
+        str++;
+    }
+}
+ 
+void results()  // Function to show results
+{
+int i;
+carry = 0;
+lcd_cmd(0x01);
+delay(msec);
+lcd_cmd(0x80);
+delay(msec);
+lcd_data_str("Results");
+delay(msec);
+lcd_cmd(0x14);
+delay(msec);
+lcd_data_str("Are");
+delay(msec);
+lcd_cmd(0x14);
+delay(msec);
+lcd_data_str("Out");
+delay(msec);
+lcd_cmd(0x84);
+delay(100);
+ lcd_cmd(0x01);
+delay(msec);
+lcd_cmd(0x80);
+delay(msec);
+lcd_data_str("P1=");
+vote1 = vote_1 + 48;
+lcdport = vote1;
+daten();
+delay(msec);
+lcd_cmd(0x84);
+delay(msec);
+lcd_data_str("P2=");
+vote2 = vote_2 + 48;
+lcdport = vote2;
+daten();
+delay(msec);
+lcd_cmd(0x88);
+delay(msec);
+lcd_data_str("P3=");
+vote3 = vote_3 + 48;
+lcdport = vote3;
+daten();
+delay(msec);
+delay(100);
+
+arr[0] = vote_1;
+arr[1] = vote_2;
+arr[2] = vote_3;
+for(i=0;i<3;i++)
+{
+  if(arr[i]>=max)
+	{max = arr[i];
+	}
+}
+if ( (vote_1 == max) && ( vote_2 != max) && (vote_3 != max) )
+{
+  carry = 1;
+  lcd_cmd(0x01);
+  delay(msec);
+  lcd_cmd(0x82);
+  delay(msec);
+  lcd_data_str("Hurray!!!");
+  delay(50);
+  lcd_cmd(0xC4);
+  delay(msec);
+  lcd_data_str("P1");
+  delay(msec);
+  lcd_cmd(0x14);
+  delay(msec);
+  lcd_data_str("wins");
+  delay(msec);
+}
+if ( (vote_2 == max) && ( vote_1 != max) && (vote_3 != max) )
+{
+  carry = 1;
+  lcd_cmd(0x01);
+  delay(msec);
+  lcd_cmd(0x82);
+  delay(msec);
+  lcd_data_str("Hurray!!!");
+  delay(50);
+  lcd_cmd(0xC4);
+  delay(msec);
+  lcd_data_str("P2");
+  delay(msec);
+  lcd_cmd(0x14);
+  delay(msec);
+  lcd_data_str("wins");
+  delay(msec);
+}
+if ( (vote_3 == max) && ( vote_2 != max) && (vote_1 != max) )
+{
+  carry = 1;
+  lcd_cmd(0x01);
+  delay(msec);
+  lcd_cmd(0x82);
+  delay(msec);
+  lcd_data_str("Hurray!!!");
+  delay(50);
+  lcd_cmd(0xC4);
+  delay(msec);
+  lcd_data_str("P3");
+  delay(msec);
+  lcd_cmd(0x14);
+  delay(msec);
+  lcd_data_str("wins");
+  delay(msec);
+}
+if (carry==0)
+{
+  lcd_cmd(0x01);
+  delay(msec);
+  lcd_cmd(0x82);
+  delay(msec);
+  lcd_data_str("clash");
+  delay(50);
+  lcd_cmd(0x14);
+  delay(msec);
+  lcd_data_str("between!!!");
+  delay(50);
+	if(vote_1 == max)
+  {
+   lcd_cmd(0xC5);
+   lcd_data_str("P1");
+   delay(50);
+  }
+  if(vote_2 == max)
+  {
+   lcd_cmd(0xC5);
+   lcd_data_str("P2");
+   delay(50);
+  }
+  if(vote_3 == max)
+  {
+   lcd_cmd(0xC9);
+   lcd_data_str("P3");
+   delay(50);
+  }
+}
+return;
+}
+void vote_count() 
+{	// Function to count votes
+while (candidate_1==0 && candidate_2==0 && candidate_3==0 && stop_pin==1);
+if(stop_pin == 0)
+{ while(1)
+	{
+	results();
+	}
+}
+if (candidate_1==1)
+{
+    vote_1 = vote_1 + 1;
+		ini_pin = 0; 
+		return; 
+}
+if (candidate_2==1)
+{
+    vote_2 = vote_2 + 1;
+		 ini_pin = 0;
+		 return;
+}
+if (candidate_3==1)
+{
+    vote_3 = vote_3 + 1;
+		ini_pin = 0; 
+		return; 
+}
+}
+void lcd_ini()
+{
+lcd_cmd(0x38);
+delay(msec);
+lcd_cmd(0x0E);
+delay(msec);
+lcd_cmd(0x01);
+delay(msec);
+lcd_cmd(0x81);
+delay(msec);
+lcd_data_str("Welcome!!!");
+delay(100);
+lcd_cmd(0x01);
+delay(msec);
+lcd_cmd(0x80);
+delay(msec);
+lcd_data_str("Press");
+delay(msec);
+lcd_cmd(0x14);
+delay(msec);
+lcd_data_str("button");
+delay(msec);
+lcd_cmd(0xC0);
+delay(msec);
+lcd_data_str("to");
+delay(msec);
+lcd_cmd(0x14);
+delay(msec);
+lcd_data_str("vote");
+delay(100);
+lcd_cmd(0x01);
+delay(msec);
+lcd_cmd(0x80);
+delay(msec);
+lcd_data_str("P1");
+delay(msec);
+lcd_cmd(0x84);
+delay(msec);
+lcd_data_str("P2");
+delay(msec);
+lcd_cmd(0x88);
+delay(msec);
+lcd_data_str("P3");
+delay(msec);
+lcd_cmd(0x8C);
+delay(msec);
+vote_count();
+lcd_cmd(0x01);
+delay(msec);
+lcd_cmd(0x85);
+delay(msec);
+lcd_data_str("Thank");
+delay(msec);
+lcd_cmd(0x14);
+delay(msec);
+lcd_data_str("You!!");
+delay(msec);
+}
+
+void main()
+{ 
+ini_pin = 1;
+stop_pin = 1;
+vote_1 = 0;
+vote_2 = 0;
+vote_3 = 0;
+candidate_1 = 0;
+candidate_2 = 0;
+candidate_3  = 0;
+lcd_cmd(0x38);
+delay(50);
+lcd_cmd(0x0E);
+delay(50);
+lcd_cmd(0x01);
+delay(50);
+lcd_cmd(0x80);
+delay(50);
+lcd_data_str("Press");
+delay(50);
+lcd_cmd(0x14);
+delay(50);
+lcd_data_str("init");
+delay(50);
+lcd_cmd(0xC0);
+delay(50);
+lcd_data_str("to");
+delay(50);
+lcd_cmd(0x14);
+delay(50);
+lcd_data_str("begin");
+delay(100);
+while(1)
+{
+  while(ini_pin == 1);
+	while(stop_pin == 1)
+   {lcd_ini();
+	 }
+	 ini_pin = 1;
+	 break;
+}
+
+}
